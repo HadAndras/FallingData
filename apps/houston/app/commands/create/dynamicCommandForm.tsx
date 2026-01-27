@@ -25,11 +25,14 @@ import { Switch } from "@workspace/ui/src/components/switch.tsx";
 
 import {
   requestMeasurementSchema,
+  requestSelftestSchema,
   setDurSchema,
   setScaleSchema,
+  RESOLUTION_VALUES,
   type FormValues,
   type SetDurValues,
   type RequestMeasurementValues,
+  type RequestSelftestValues,
   type SetScaleValues,
 } from "./command-schemas";
 
@@ -43,6 +46,7 @@ interface allSubmitData {
   setDurForm?: SetDurValues | null;
   requestMeasurementForm?: RequestMeasurementValues | null;
   setScaleForm?: SetScaleValues | null;
+  requestSelftestForm?: RequestSelftestValues | null;
 }
 
 export async function LoadDataView(
@@ -54,15 +58,15 @@ export async function LoadDataView(
       allData.requestMeasurementForm ??
       allData.setDurForm ??
       allData.setScaleForm ??
+      allData.requestSelftestForm ??
       {};
     const response = await apiFetch(`/commands`, "PUT", {
       ...allData.firstForm,
       params,
     });
-
     const newId = response.id;
     if (!newId) {
-      throw new Error("Nem érkezett ID a választban");
+      throw new Error("Nem érkezett ID a válaszban");
     }
 
     return newId;
@@ -75,7 +79,6 @@ export async function LoadDataView(
 
 export const NO_PARAM_COMMANDS = [
   "FORCE_STATUS_REPORT",
-  "REQUEST_SELFTEST",
   "RESET",
   "RESTART",
   "SAVE",
@@ -90,6 +93,7 @@ export function DynamicCommandForm({
     firstForm: submittedData,
     setDurForm: null,
     requestMeasurementForm: null,
+    requestSelftestForm: null,
     setScaleForm: null,
   });
   const router = useRouter();
@@ -130,9 +134,19 @@ export function DynamicCommandForm({
     resolver: zodResolver(requestMeasurementSchema),
     defaultValues: {
       timestamp: 1748899367,
-      byte: false,
+      continue_with_full_channel: false,
+      header_packet: true,
     },
   });
+
+    const requestSelftestForm = useForm<RequestSelftestValues>({
+        resolver: zodResolver(requestSelftestSchema),
+        defaultValues: {
+            timestamp: 1748899367,
+        },
+    });
+
+
 
   const onSetDurSubmit = async (data: SetDurValues) => {
     console.log("[v0] SET_DUR Form submitted:", { ...submittedData, ...data });
@@ -150,6 +164,7 @@ export function DynamicCommandForm({
     });
     const updatedFormData = { ...formData, setScaleForm: data };
     const newId = await LoadDataView(updatedFormData);
+    console.log("new id: ", {newId});
     if (newId) {
       router.push(`/commands/${newId}`);
     }
@@ -167,6 +182,18 @@ export function DynamicCommandForm({
     }
   };
 
+    const onRequestSelfTestSubmit = async (data: RequestSelftestValues) => {
+        console.log("[v0] Request Selftest Form submitted:", {
+            ...submittedData,
+            ...data,
+        });
+        const updatedFormData = { ...formData, requestSelftestForm: data };
+        const newId = await LoadDataView(updatedFormData);
+        if (newId) {
+            router.push(`/commands/${newId}`);
+        }
+    };
+
   switch (submittedData.type) {
     case "SET_DURATION":
       return (
@@ -182,7 +209,7 @@ export function DynamicCommandForm({
                 name="repetitions"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ismétlések száma: </FormLabel>
+                    <FormLabel>Ismétlések száma(1-63): </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -235,7 +262,7 @@ export function DynamicCommandForm({
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mérési idő: </FormLabel>
+                    <FormLabel>Mérési idő(1-65535): </FormLabel>
                     <Input
                       type="number"
                       className="w-[250px]"
@@ -250,7 +277,7 @@ export function DynamicCommandForm({
                 name="breaktime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Szünet a mérések között: </FormLabel>
+                    <FormLabel>Szünet a mérések között(1-65535): </FormLabel>
                     <Input
                       type="number"
                       className="w-[250px]"
@@ -287,7 +314,7 @@ export function DynamicCommandForm({
                 name="lowerThreshold"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>A mérési tartomány minimuma:</FormLabel>
+                    <FormLabel>A mérési tartomány minimuma(0-4094):</FormLabel>
                     <Input
                       type="number"
                       className="w-[250px]"
@@ -302,7 +329,7 @@ export function DynamicCommandForm({
                 name="upperThreshold"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>A mérési tartomány maximuma:</FormLabel>
+                    <FormLabel>A mérési tartomány maximuma(1-4095):</FormLabel>
                     <Input
                       type="number"
                       className="w-[250px]"
@@ -317,13 +344,21 @@ export function DynamicCommandForm({
                 name="resolution"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>A mérési tartomány felbontása:</FormLabel>
-                    <Input
-                      type="number"
-                      className="w-[250px]"
-                      placeholder="100"
-                      {...field}
-                    />
+                    <FormLabel>A mérési tartomány felbontása(1-1024):</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                          <FormControl>
+                              <SelectTrigger className="w-[250px]">
+                                  <SelectValue placeholder="Válasszon felbontást" />
+                              </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              {RESOLUTION_VALUES.map((value) => (
+                                  <SelectItem key={value} value={value.toString()}>
+                                      {value}
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
                   </FormItem>
                 )}
               />
@@ -332,7 +367,7 @@ export function DynamicCommandForm({
                 name="sample"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>A mintavételezés gyakorisága: </FormLabel>
+                    <FormLabel>A mintavételezés gyakorisága(1-255): </FormLabel>
                     <Input
                       type="number"
                       className="w-[250px]"
@@ -386,7 +421,7 @@ export function DynamicCommandForm({
 
               <FormField
                 control={requestMeasurementForm.control}
-                name="byte"
+                name="continue_with_full_channel"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Byte: </FormLabel>
@@ -399,6 +434,21 @@ export function DynamicCommandForm({
                   </FormItem>
                 )}
               />
+              <FormField
+                    control={requestMeasurementForm.control}
+                    name="header_packet"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Header: </FormLabel>
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </div>
+                        </FormItem>
+                    )}
+                />
               <div className="flex gap-3">
                 <Button type="submit" variant="secondary">
                   Parancs Véglegesítése
@@ -411,9 +461,48 @@ export function DynamicCommandForm({
           </Form>
         </div>
       );
+    case "REQUEST_SELFTEST":
+        return (
+            <div className="mt-8 p-6 border border-border rounded-lg">
+                <h2 className="text-2xl font-semibold mb-4">
+                    Request Selftest paraméterek
+                </h2>
+                <Form {...requestSelftestForm}>
+                    <form
+                        onSubmit={requestSelftestForm.handleSubmit(
+                            onRequestSelfTestSubmit,
+                        )}
+                        className="space-y-6"
+                    >
+                        <FormField
+                            control={requestSelftestForm.control}
+                            name="timestamp"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>A mérés kivitelezésének időpontja </FormLabel>
+                                    <Input
+                                        type="number"
+                                        className="w-[250px]"
+                                        placeholder="100"
+                                        {...field}
+                                    />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="flex gap-3">
+                            <Button type="submit" variant="secondary">
+                                Parancs Véglegesítése
+                            </Button>
+                            <Button type="button" variant="destructive" onClick={onAbort}>
+                                Megszakítás
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </div>
+        )
 
     case "FORCE_STATUS_REPORT":
-    case "REQUEST_SELFTEST":
     case "RESET":
     case "RESTART":
     case "SAVE":

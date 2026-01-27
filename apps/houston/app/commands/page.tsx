@@ -146,7 +146,7 @@ const columns: ColumnDef<Tables<"commands_table">>[] = [
     header: ({}) => ``,
     cell: ({ row }) => {
       return (
-        <Link href={`/packets/${row.original.id}`}>
+        <Link href={`/commands/${row.original.id}`}>
           <ExternalLink />
         </Link>
       );
