@@ -52,7 +52,6 @@ export async function PUT(req: Request) {
     let res = await check_json_header(req);
     if (res !== null) return res;
     let json: JSON_INPUT | undefined | null = await req.json();
-
     if (!json) return new Response("Bad request", { status: 400 });
 
     const parseResult = NewMissionSchema.safeParse(json);
