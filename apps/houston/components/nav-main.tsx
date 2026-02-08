@@ -65,7 +65,7 @@ const sections: { title?: string; items: IMenuSection[] }[] = [
           },
           {
             title: "Új küldetés létrehozása",
-            url: "# ",
+            url: "/missions/create",
           },
         ],
       },
