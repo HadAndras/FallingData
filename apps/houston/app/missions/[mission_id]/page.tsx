@@ -8,12 +8,10 @@ import { MetaadatokCard } from "@/app/missions/mission_components/metaadatok-car
 import Device from "@/components/device";
 import SpectrumCard from "@workspace/ui/src/components/Spectrum.tsx";
 
-export default async function missionDataPage({
-                                          params,
-                                      }: {
+export default async function missionDataPage({params,}: {
     params: Promise<{ mission_id: string }>;
 }) {
-    console.log("Hello");
+
     const { mission_id } = await params;
     const supabase = await createClient();
 
@@ -29,6 +27,12 @@ export default async function missionDataPage({
         .eq("id", mission_id)
         .single();
 
+    const { data: settings } = await supabase
+        .from("mission_settings")
+        .select("*")
+        .eq("id", mission_id)
+        .single();
+
     const { data: commands } = await supabase
         .from("commands")
         .select('id, type, command')
@@ -38,6 +42,12 @@ export default async function missionDataPage({
         .from("packets")
         .select('id, type, packet')
         .eq("mission_id", mission_id) as { data: PacketItem[] | null };
+
+    const {data: spectrumPackets} = await supabase
+        .from("packets")
+        .select('id, type, packet')
+        .eq("mission_id", mission_id)
+        .eq("type", "SPECTRUM") as { data: PacketItem[] | null };
 
     const { data: headerPacket } = await supabase
         .from("packets")
@@ -61,19 +71,18 @@ export default async function missionDataPage({
     };
 
     const beallitasok = [
-        { nev: "Típus", ertek: details?.settings?.type },
-        { nev: "Mérési tart. minimum  (mV)", ertek: details?.settings?.min_voltage },
-        { nev: "Mérési tart. maximum (mV)", ertek: details?.settings?.max_voltage },
-        { nev: "Sampling", ertek: details?.settings?.samples },
-        { nev: "Felbontás (csatorna)", ertek: details?.settings?.resolution },
-        { nev: "Időtartam (beütés)", ertek: details?.settings?.duration },
-        { nev: "Okézás", ertek: details?.settings?.is_okay },
-        { nev: "Fejléc packet", ertek: details?.settings?.is_header },
-        { nev: "Folytat ha megtelik?", ertek: details?.settings?.continue_with_full_channel },
+        { nev: "Típus", ertek: settings?.type },
+        { nev: "Mérési tart. minimum  (mV)", ertek: settings?.min_voltage },
+        { nev: "Mérési tart. maximum (mV)", ertek: settings?.max_voltage },
+        { nev: "Sampling", ertek: settings?.samples },
+        { nev: "Felbontás (csatorna)", ertek: settings?.resolution },
+        { nev: "Időtartam (beütés)", ertek: settings?.duration },
+        { nev: "Okézás", ertek: settings?.is_okay },
+        { nev: "Fejléc packet", ertek: settings?.is_header },
+        { nev: "Folytat ha megtelik?", ertek: settings?.continue_with_full_channel },
     ];
 
-
-    const spectrum: string[] = (packets || []).map((p) => p.packet);
+    const spectrum: string[] = (spectrumPackets || []).map((p) => p.packet);
 
     return (
         <main className="min-h-screen bg-background p-6 lg:p-10">
@@ -100,9 +109,9 @@ export default async function missionDataPage({
                 <SpectrumCard
                     data={{
                         packets: spectrum,
-                        min_threshold: details?.settings?.min_voltage,
-                        max_threshold: details?.settings?.max_voltage,
-                        resolution: details?.settings?.resolution
+                        min_threshold: settings?.min_voltage,
+                        max_threshold: settings?.max_voltage,
+                        resolution: settings?.resolution
                     }}
                 />
             </div>

@@ -1,3 +1,4 @@
+"use client"
 import * as React from "react"
 import { Bar, BarChart, CartesianGrid, XAxis} from "recharts"
 import {type ChartConfig,
@@ -28,30 +29,37 @@ export default function SpectrumCard({ data }: { data: Input }) {
     //Paketek szétválasztása
     for(const p of data.packets){
         for (let i = 0; i < p.length; i += size) {
-            channelList.push(p.slice(i, i + size));
+            channelList.push(String(p.slice(i, i + size)));
         }
     }
 
     //Egyes countok meghatározása
     let sum = 0;
-    for(const c in channelList){
-        for (let j = 0; j < c.length; j++) {
-            if(Number(c[j])-Number("0") >= 10){
-                sum += Number(c[j])-Number("A")+10
+    for(let k = 0; k < channelList.length; k++){
+        for (let j = 0; j < (channelList[k] ?? "").length; j++) {
+            if((channelList[k]?.charAt(j).charCodeAt(0) ?? -100)-"0".charCodeAt(0) >= 10){
+                sum +=
+                    ((channelList[k]?.charAt(j).charCodeAt(0) ?? -100)-"A".charCodeAt(0)+10)*
+                    Math.pow(16, 3-j);
+
             }
             else {
-                sum += Number(c[j]) - Number("0")
+                sum += ((channelList[k]?.charAt(j).charCodeAt(0) ?? -100) - "0".charCodeAt(0))*
+                Math.pow(16, 3-j);
             }
+
         }
         countArr.push(sum);
         sum = 0;
     }
+
     //Energiák meghatározása
 
     for(let c = 0; c < countArr.length; c++){
         chartData.push({count: countArr[c] ?? -100,
-        energy: data.min_threshold+c*Math.round(data.max_threshold-data.min_threshold)/data.resolution});
+        energy: data.min_threshold+c*Math.round((data.max_threshold-data.min_threshold)/data.resolution)});
     }
+    console.log(chartData);
 
     const chartConfig = {
         count: {
@@ -63,13 +71,13 @@ export default function SpectrumCard({ data }: { data: Input }) {
     return (
         <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
             <BarChart accessibilityLayer data={chartData}>
-                <CartesianGrid vertical={false} />
+                <CartesianGrid vertical={true} />
                 <XAxis
                     dataKey="energy"
-                    tickLine={false}
+                    tickLine={true}
                     tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
+                    axisLine={true}
+                    tickFormatter={(value) => value.toString()}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
